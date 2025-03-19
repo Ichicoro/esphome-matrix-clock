@@ -1,0 +1,154 @@
+esphome:
+  name: cool-matrix-clock
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+external_components:
+  - source: github://TillFleisch/ESPHome-HUB75-MatrixDisplayWrapper@main
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+  - id: my_ota
+    platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # output_power: 10.0dBm
+
+time:
+  - platform: sntp
+    id: sntp_time
+
+font:
+  # - file: "fonts/7x14B.bdf"
+  #   id: big_font
+  #   size: 14
+  #   bpp: 2
+  - file: "fonts/MatrixChunky6.bdf"
+    id: small_font
+    size: 6
+    bpp: 2
+  # - file: "fonts/spleen-5x8.bdf"
+  #   id: small_font
+  #   size: 8
+  #   bpp: 2
+  - file: "fonts/MatrixChunky8.bdf"
+    id: big_font
+    size: 8
+    bpp: 1
+
+image:
+  - file: "icons/smile.png"
+    id: smile_icon
+    type: binary
+  - file: "icons/iphone.png"
+    id: iphone_icon
+    type: binary
+
+sensor:
+  - platform: homeassistant
+    entity_id: weather.home_weather
+    id: weather
+    name: "Weather"
+    attribute: temperature
+  - platform: homeassistant
+    entity_id: sensor.iphone_di_zelda_icloud_battery
+    id: iphone_battery
+    name: "iPhone Battery"
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO21
+      inverted: true
+    name: "Button1"
+  - platform: gpio
+    pin:
+      number: GPIO33
+      inverted: true
+    name: "Button2"
+  - platform: gpio
+    pin:
+      number: GPIO32
+      inverted: true
+    name: "Button3"
+  - platform: gpio
+    pin:
+      number: GPIO35
+      inverted: true
+    name: "Button4"
+  - platform: gpio
+    pin:
+      number: GPIO34
+      inverted: true
+    name: "Button5"
+
+display:
+  - platform: hub75_matrix_display
+    id: matrix
+    width: 64
+    height: 32
+    R1_pin: GPIO25
+    B1_pin: GPIO26
+    G1_pin: GPIO27
+    R2_pin: GPIO14
+    B2_pin: GPIO12
+    G2_pin: GPIO13
+    A_pin: GPIO23
+    B_pin: GPIO19
+    C_pin: GPIO5
+    D_pin: GPIO17
+    E_pin: GPIO22
+    LAT_pin: GPIO4
+    OE_pin: GPIO15
+    CLK_pin: GPIO16
+    driver: ICN2038S
+    brightness: 255
+    i2sspeed: HZ_20M
+    rotation: 180
+    pages:
+      - id: clock_page
+        lambda: |-
+          auto time = id(sntp_time).now();
+          auto orange = Color(255, 100, 30);
+
+          const char *days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+          auto day = days[time.day_of_week - 1];
+
+          float temperature = id(weather).state;
+
+          it.printf(1, 1, id(big_font), orange, "%02d:%02d:%02d", time.hour, time.minute, time.second);
+          it.printf(1, 11, id(small_font), orange, "%s %02d-%02d-%04d", day, time.day_of_month, time.month, time.year);
+
+          auto verticalPos = 52;
+          if (temperature < 0) {
+            verticalPos = 48;
+          }
+          if (abs(temperature) >= 0 && abs(temperature) < 10) {
+            it.printf(verticalPos, 1, id(big_font), orange, "%.0f°C", temperature);
+          } else {
+            it.printf(verticalPos - 4, 1, id(big_font), orange, "%.0f°C", temperature);
+          }
+
+          bool showFirstSmile = false;
+
+          if (showFirstSmile) {
+            auto shouldBeUp1 = (time.second + 1) % 4 >= 2;
+            it.image(1, 22 - shouldBeUp1, id(smile_icon), orange);
+          }
+          auto shouldBeUp2 = time.second % 4 >= 2;
+          it.image(54, 21 + shouldBeUp2, id(smile_icon), orange);
+
+          uint battery = id(iphone_battery).state;
+          it.image(12 + (showFirstSmile ? 0 : -11), 25, id(iphone_icon), orange);
+          it.printf(18 + (showFirstSmile ? 0 : -11), 26, id(small_font), orange, "%d%%", battery);

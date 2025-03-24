@@ -28,6 +28,10 @@ wifi:
 time:
   - platform: sntp
     id: sntp_time
+    on_time: 
+      - cron: "0 0 * * * *"
+        then:
+          - rtttl.play: 'two_short:d=4,o=5,b=125:16b5,8p,16b5'
 
 font:
   # - file: "fonts/7x14B.bdf"
@@ -50,10 +54,12 @@ font:
 image:
   - file: "icons/smile.png"
     id: smile_icon
-    type: binary
+    type: BINARY
+    use_transparency: True
   - file: "icons/iphone.png"
     id: iphone_icon
-    type: binary
+    type: BINARY
+    use_transparency: True
 
 sensor:
   - platform: homeassistant
@@ -62,7 +68,7 @@ sensor:
     name: "Weather"
     attribute: temperature
   - platform: homeassistant
-    entity_id: sensor.iphone_di_zelda_icloud_battery
+    entity_id: sensor.iphone_di_zelda_battery_level
     id: iphone_battery
     name: "iPhone Battery"
 
@@ -72,11 +78,26 @@ binary_sensor:
       number: GPIO21
       inverted: true
     name: "Button1"
+    on_press:
+      then:
+        - output.turn_on: buzzer
+        - output.ledc.set_frequency:
+            id: buzzer
+            frequency: "1000Hz"
+        - output.set_level:
+            id: buzzer
+            level: "50%"
+    on_release: 
+      then:
+        - output.turn_off: buzzer
   - platform: gpio
     pin:
       number: GPIO33
       inverted: true
     name: "Button2"
+    on_press: 
+      then:
+        - rtttl.play: 'two_short:d=4,o=5,b=125:16b5,8p,16b5'
   - platform: gpio
     pin:
       number: GPIO32
@@ -87,11 +108,49 @@ binary_sensor:
       number: GPIO35
       inverted: true
     name: "Button4"
+    on_press:
+      then:
+        - output.turn_on: buzzer
+        - output.ledc.set_frequency:
+            id: buzzer
+            frequency: "1000Hz"
+        - output.set_level:
+            id: buzzer
+            level: "50%"
+    on_release: 
+      then:
+        - output.turn_off: buzzer
   - platform: gpio
     pin:
       number: GPIO34
       inverted: true
     name: "Button5"
+    on_press:
+      then:
+        - output.turn_on: buzzer
+        - output.ledc.set_frequency:
+            id: buzzer
+            frequency: "1000Hz"
+        - output.set_level:
+            id: buzzer
+            level: "50%"
+    on_release: 
+      then:
+        - output.turn_off: buzzer
+  
+button:
+  - platform: template
+    name: "Play doorbell"
+    id: doorbell_snd_button
+    on_press:
+      then:
+        - rtttl.play: 'doorbell:d=4,o=5,b=160:c#,f,g#,c#6'
+  - platform: template
+    name: "Play casio beep beep"
+    id: casio_beep_beep_snd_button
+    on_press:
+      then:
+        - rtttl.play: 'two_short:d=4,o=5,b=125:16b5,8p,16b5'
 
 display:
   - platform: hub75_matrix_display
@@ -121,6 +180,7 @@ display:
         lambda: |-
           auto time = id(sntp_time).now();
           auto orange = Color(255, 100, 30);
+          auto darkerOrange = Color(255, 50, 15);
 
           const char *days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
           auto day = days[time.day_of_week - 1];
@@ -130,15 +190,7 @@ display:
           it.printf(1, 1, id(big_font), orange, "%02d:%02d:%02d", time.hour, time.minute, time.second);
           it.printf(1, 11, id(small_font), orange, "%s %02d-%02d-%04d", day, time.day_of_month, time.month, time.year);
 
-          auto verticalPos = 52;
-          if (temperature < 0) {
-            verticalPos = 48;
-          }
-          if (abs(temperature) >= 0 && abs(temperature) < 10) {
-            it.printf(verticalPos, 1, id(big_font), orange, "%.0f°C", temperature);
-          } else {
-            it.printf(verticalPos - 4, 1, id(big_font), orange, "%.0f°C", temperature);
-          }
+          it.printf(64, 1, id(big_font), orange, TextAlign::TOP_RIGHT, "%.0f°C", temperature);
 
           bool showFirstSmile = false;
 
@@ -149,6 +201,18 @@ display:
           auto shouldBeUp2 = time.second % 4 >= 2;
           it.image(54, 21 + shouldBeUp2, id(smile_icon), orange);
 
+          showFirstSmile = false;
+
           uint battery = id(iphone_battery).state;
-          it.image(12 + (showFirstSmile ? 0 : -11), 25, id(iphone_icon), orange);
+          it.image(12 + (showFirstSmile ? 0 : -11), 25, id(iphone_icon), orange, darkerOrange);
           it.printf(18 + (showFirstSmile ? 0 : -11), 26, id(small_font), orange, "%d%%", battery);
+
+output:
+  - platform: ledc
+    pin: GPIO18
+    id: buzzer
+
+rtttl:
+  output: buzzer
+  id: my_rtttl
+  gain: 50%

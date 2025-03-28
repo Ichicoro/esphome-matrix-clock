@@ -31,7 +31,7 @@ time:
     on_time: 
       - cron: "0 0 * * * *"
         then:
-          - rtttl.play: 'two_short:d=4,o=5,b=125:16b5,8p,16b5'
+          - rtttl.play: 'two_short:d=4,o=5,b=125:16b6,16p,16b6'
 
 font:
   # - file: "fonts/7x14B.bdf"
@@ -97,7 +97,7 @@ binary_sensor:
     name: "Button2"
     on_press: 
       then:
-        - rtttl.play: 'two_short:d=4,o=5,b=125:16b5,8p,16b5'
+        - rtttl.play: 'two_short:d=4,o=5,b=125:16b6,16p,16b6'
   - platform: gpio
     pin:
       number: GPIO32
